@@ -1,6 +1,7 @@
 # Career Guidance Chatbot
 A simple interactive chatbot that helps users with career guidance.
-
+## Project Preview
+![Career Guidance Chatbot](Screenshot 2026-04-29 150718)
 ## Features
 - Career path suggestions
 - Skill recommendations
