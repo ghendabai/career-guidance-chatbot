@@ -1,0 +1,183 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+#app { display: flex; flex-direction: column; height: 520px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; background: var(--color-background-primary); }
+#header { background: #1F4E79; padding: 14px 18px; display: flex; align-items: center; gap: 10px; }
+#header .avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+#header .info .name { color: #fff; font-size: 14px; font-weight: 500; }
+#header .info .status { color: rgba(255,255,255,0.7); font-size: 12px; }
+#messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--color-background-secondary); }
+.msg { display: flex; gap: 8px; max-width: 85%; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+.bot .bubble { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); border-radius: 4px 16px 16px 16px; }
+.user .bubble { background: #1F4E79; color: #fff; border-radius: 16px 4px 16px 16px; }
+.bot-icon { width: 28px; height: 28px; border-radius: 50%; background: #1F4E79; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; margin-top: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { padding: 5px 12px; border-radius: 20px; border: 0.5px solid #1F4E79; color: #1F4E79; font-size: 12px; cursor: pointer; background: var(--color-background-primary); transition: all 0.15s; }
+.chip:hover { background: #1F4E79; color: #fff; }
+#input-area { padding: 12px 16px; border-top: 0.5px solid var(--color-border-tertiary); display: flex; gap: 8px; background: var(--color-background-primary); }
+#user-input { flex: 1; padding: 9px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); font-size: 14px; background: var(--color-background-secondary); color: var(--color-text-primary); outline: none; }
+#user-input:focus { border-color: #1F4E79; }
+#send-btn { width: 36px; height: 36px; border-radius: 50%; background: #1F4E79; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#send-btn svg { width: 16px; height: 16px; fill: white; }
+.typing { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-text-tertiary); animation: bounce 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+</style>
+
+<div id="app">
+  <div id="header">
+    <div class="avatar">🎓</div>
+    <div class="info">
+      <div class="name">CareerBot</div>
+      <div class="status">Career Guidance Assistant</div>
+    </div>
+  </div>
+  <div id="messages"></div>
+  <div id="input-area">
+    <input id="user-input" type="text" placeholder="Ask me about your career..." />
+    <button id="send-btn">
+      <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const knowledge = {
+  greetings: {
+    patterns: ["hello","hi","hey","good morning","good evening","namaste","hii"],
+    response: "Hello! I'm CareerBot, your career guidance assistant. I can help you with career paths, skills to learn, resume tips, interview preparation, and more. What would you like to explore today?",
+    chips: ["Career paths after MCA", "Skills to learn in 2025", "How to crack interviews", "Resume tips"]
+  },
+  career_paths: {
+    patterns: ["career","path","options","scope","future","job","after mca","after bca","after graduation"],
+    response: "Great question! Here are popular career paths for CS graduates:\n\n• Software Developer / Engineer\n• Data Analyst / Data Scientist\n• Business Analyst (great for Capgemini!)\n• IT Consultant\n• Cloud Engineer (AWS, Azure)\n• Machine Learning Engineer\n• Technical Trainer / Professor\n\nWhich of these interests you most?",
+    chips: ["Data Science path", "Software development path", "Capgemini roles", "How to start?"]
+  },
+  skills: {
+    patterns: ["skill","learn","technology","tech","programming","language","tool","2025","trending"],
+    response: "Top in-demand skills right now:\n\n• Python — most versatile, used in AI/ML & data\n• SQL — essential for almost every tech role\n• Cloud (AWS/Azure) — huge demand post-2024\n• Machine Learning & AI basics\n• Communication & presentation skills\n• Git & version control\n\nPro tip: Start with Python + SQL if you're a beginner. They open the most doors!",
+    chips: ["How to learn Python?", "SQL resources", "Cloud certifications", "Resume tips"]
+  },
+  resume: {
+    patterns: ["resume","cv","format","write","portfolio","linkedin","profile"],
+    response: "Resume tips for freshers & early career:\n\n• Keep it to 1 page — recruiters spend 6 seconds on average\n• Add measurable outcomes: 'Improved X by Y%' not just 'Did X'\n• List GitHub or portfolio links for tech roles\n• Tailor your resume for each job description\n• Use a clean, ATS-friendly format (no tables, no images)\n• Always include LinkedIn!\n\nWant me to review specific sections?",
+    chips: ["ATS tips", "How to describe projects?", "Skills section tips", "Interview prep"]
+  },
+  interview: {
+    patterns: ["interview","prepare","tips","question","crack","hr","technical","placement"],
+    response: "Interview preparation strategy:\n\n📚 Technical rounds:\n• Practice DSA on LeetCode / HackerRank\n• Revise OOP concepts (very common!)\n• Know your projects inside-out\n• Be ready to explain your resume line by line\n\n🗣 HR rounds:\n• Prepare 'Tell me about yourself' (60 sec version)\n• Common: strengths/weaknesses, why this company, 5-year plan\n• Research the company before you go!\n\nWhich company are you targeting?",
+    chips: ["Capgemini interview tips", "DSA resources", "HR questions list", "Salary negotiation"]
+  },
+  capgemini: {
+    patterns: ["capgemini","infosys","tcs","wipro","accenture","mnc","service based","it company"],
+    response: "For Capgemini specifically:\n\n• Aptitude test: Focus on quantitative, logical, verbal\n• Technical: C++, OOP, basic SQL, DBMS\n• Essay writing round — practice writing on tech topics\n• HR: They value communication skills highly\n\nCapgemini hires for roles like:\n→ Analyst, Associate Consultant, Software Engineer\n→ They also love candidates with domain knowledge (finance, education)\n\nYour NSE internship is a big plus!",
+    chips: ["Aptitude preparation", "OOP concepts", "SQL basics", "Mock interview questions"]
+  },
+  salary: {
+    patterns: ["salary","package","ctc","pay","lpa","compensation","negotiate","hike"],
+    response: "Salary ranges in India (2025) for CS freshers:\n\n• Service-based (TCS, Wipro, Capgemini): ₹3.5–6 LPA\n• Product startups: ₹6–12 LPA\n• Data/ML roles: ₹5–10 LPA (fresher)\n• Teaching + industry hybrid: Depends on institution\n\nTips to negotiate:\n• Never give a number first — ask for their range\n• Highlight unique skills (ML, certifications)\n• Research on Glassdoor/AmbitionBox before negotiating",
+    chips: ["Capgemini salary", "How to negotiate?", "Skills that increase salary", "Career paths"]
+  },
+  python: {
+    patterns: ["python","learn python","python resources","how to learn python"],
+    response: "Python learning roadmap for beginners:\n\n1. Basics: variables, loops, functions (1–2 weeks)\n2. OOP in Python (1 week)\n3. Libraries: Pandas, NumPy, Matplotlib (2 weeks)\n4. Projects: Build 2–3 small projects\n5. ML: Scikit-learn, model building\n\nFree resources:\n• Python.org official tutorial\n• freeCodeCamp Python course (YouTube)\n• Kaggle Learn — free, hands-on notebooks",
+    chips: ["SQL resources", "Machine learning basics", "Project ideas", "Career paths"]
+  },
+  default: {
+    response: "That's a great question! I can guide you on career paths, skills, resume building, interview preparation, and company-specific tips. Could you rephrase or pick a topic below?",
+    chips: ["Career paths", "Skills to learn", "Resume tips", "Interview prep", "Salary info"]
+  }
+};
+
+const messages = document.getElementById("messages");
+const input = document.getElementById("user-input");
+
+function addMessage(text, isUser = false, chips = []) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "msg " + (isUser ? "user" : "bot");
+  if (!isUser) {
+    const icon = document.createElement("div");
+    icon.className = "bot-icon";
+    icon.textContent = "🎓";
+    wrapper.appendChild(icon);
+  }
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  const formatted = text.replace(/\n/g, "<br>");
+  bubble.innerHTML = formatted;
+  if (chips.length && !isUser) {
+    const chipDiv = document.createElement("div");
+    chipDiv.className = "chips";
+    chips.forEach(c => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = c;
+      chip.onclick = () => handleSend(c);
+      chipDiv.appendChild(chip);
+    });
+    bubble.appendChild(chipDiv);
+  }
+  wrapper.appendChild(bubble);
+  messages.appendChild(wrapper);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function showTyping() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "msg bot";
+  wrapper.id = "typing";
+  const icon = document.createElement("div");
+  icon.className = "bot-icon";
+  icon.textContent = "🎓";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.innerHTML = '<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  wrapper.appendChild(icon);
+  wrapper.appendChild(bubble);
+  messages.appendChild(wrapper);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.getElementById("typing");
+  if (t) t.remove();
+}
+
+function getResponse(text) {
+  const lower = text.toLowerCase();
+  for (const key in knowledge) {
+    if (key === "default") continue;
+    const entry = knowledge[key];
+    if (entry.patterns && entry.patterns.some(p => lower.includes(p))) {
+      return entry;
+    }
+  }
+  return knowledge.default;
+}
+
+function handleSend(text) {
+  const msg = text || input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  addMessage(msg, true);
+  showTyping();
+  setTimeout(() => {
+    removeTyping();
+    const res = getResponse(msg);
+    addMessage(res.response, false, res.chips || []);
+  }, 800);
+}
+
+document.getElementById("send-btn").onclick = () => handleSend();
+input.addEventListener("keydown", e => { if (e.key === "Enter") handleSend(); });
+
+setTimeout(() => {
+  const entry = knowledge.greetings;
+  addMessage(entry.response, false, entry.chips);
+}, 300);
+</script>
